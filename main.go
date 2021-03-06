@@ -15,6 +15,7 @@ import (
 func main(){
 
 	http.HandleFunc("/students", GetStudents)
+	http.HandleFunc("/student", GetStudent)
 	http.HandleFunc("/students/create", PostStudent)
 	http.HandleFunc("/students/update", UpdateStudent)
 	http.HandleFunc("/students/delete", DeleteStudent)
@@ -27,8 +28,8 @@ func main(){
 	}
 }
 
-func DeleteStudent(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "DELETE" {
+func GetStudent(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -43,8 +44,27 @@ func DeleteStudent(w http.ResponseWriter, r *http.Request) {
 		}
 		mhs.ID, _ = strconv.Atoi(id)
 
-		if err := student.Delete(ctx, mhs); err != nil {
+		result := student.GetStudent(ctx, mhs)
+		if result == "FAILED"  || result == "NOT FOUND"{
+			utils.ResponseJSON(w, nil, http.StatusNoContent)
+			return
+		}
 
+		utils.ResponseJSON(w, result, http.StatusOK)
+		return
+	}
+
+	http.Error(w, "Tidak di ijinkan", http.StatusMethodNotAllowed)
+	return
+}
+
+func GetStudents(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		students, err := student.GetAll(ctx)
+		if err != nil {
 			kesalahan := map[string]string{
 				"error": fmt.Sprintf("%v", err),
 			}
@@ -53,16 +73,39 @@ func DeleteStudent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		res := map[string]string{
-			"status": "Deleted",
-		}
-
-		utils.ResponseJSON(w, res, http.StatusOK)
+		utils.ResponseJSON(w, students, http.StatusOK)
 		return
 	}
+}
 
-	http.Error(w, "Tidak di ijinkan", http.StatusMethodNotAllowed)
-	return
+func PostStudent(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		if r.Header.Get("Content-type") != "application/json" {
+			http.Error(w, "Gunakan content type application / json", http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var studentData models.Student
+
+		if err := json.NewDecoder(r.Body).Decode(&studentData); err != nil {
+			utils.ResponseJSON(w, err, http.StatusBadRequest)
+			return
+		}
+
+		if err := student.Insert(ctx, studentData); err != nil {
+			utils.ResponseJSON(w, err, http.StatusInternalServerError)
+			return
+		}
+
+		res := map[string]string {
+			"status": "CREATED",
+		}
+		utils.ResponseJSON(w, res, http.StatusCreated)
+		return
+	}
 }
 
 func UpdateStudent(w http.ResponseWriter, r *http.Request) {
@@ -103,43 +146,24 @@ func UpdateStudent(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func PostStudent(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		if r.Header.Get("Content-type") != "application/json" {
-			http.Error(w, "Gunakan content type application / json", http.StatusBadRequest)
-			return
-		}
+func DeleteStudent(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "DELETE" {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		var studentData models.Student
+		var mhs models.Student
 
-		if err := json.NewDecoder(r.Body).Decode(&studentData); err != nil {
-			utils.ResponseJSON(w, err, http.StatusBadRequest)
+		id := r.URL.Query().Get("id")
+
+		if id == "" {
+			utils.ResponseJSON(w, "id tidak boleh kosong", http.StatusBadRequest)
 			return
 		}
+		mhs.ID, _ = strconv.Atoi(id)
 
-		if err := student.Insert(ctx, studentData); err != nil {
-			utils.ResponseJSON(w, err, http.StatusInternalServerError)
-			return
-		}
+		if err := student.Delete(ctx, mhs); err != nil {
 
-		res := map[string]string {
-			"status": "CREATED",
-		}
-		utils.ResponseJSON(w, res, http.StatusCreated)
-		return
-	}
-}
-
-func GetStudents(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		students, err := student.GetAll(ctx)
-		if err != nil {
 			kesalahan := map[string]string{
 				"error": fmt.Sprintf("%v", err),
 			}
@@ -148,7 +172,14 @@ func GetStudents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		utils.ResponseJSON(w, students, http.StatusOK)
+		res := map[string]string{
+			"status": "Deleted",
+		}
+
+		utils.ResponseJSON(w, res, http.StatusOK)
 		return
 	}
+
+	http.Error(w, "Tidak di ijinkan", http.StatusMethodNotAllowed)
+	return
 }

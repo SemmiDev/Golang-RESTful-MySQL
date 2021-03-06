@@ -7,7 +7,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"golang-mysql/config"
-	models "golang-mysql/models"
+	"golang-mysql/models"
 	"log"
 	"time"
 )
@@ -16,6 +16,53 @@ const (
 	table = "students"
 	layoutDateTime = "2006-01-02 15:04:05"
 )
+
+func GetStudent(ctx context.Context, id models.Student) interface{} {
+	db, err := config.MySQL()
+
+	if err != nil {
+		log.Fatal("Can't connect to MySQL", err)
+	}
+
+	queryText := fmt.Sprintf("SELECT * FROM %v WHERE id = '%d'", table, id.ID)
+
+	rowQuery, err := db.QueryContext(ctx, queryText)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var student models.Student
+
+	for rowQuery.Next() {
+		var createdAt, updatedAt string
+
+		if err = rowQuery.Scan(
+			&student.ID,
+			&student.Identifier,
+			&student.Name,
+			&student.Email,
+			&student.Semester,
+			&createdAt,
+			&updatedAt); err != nil && sql.ErrNoRows != nil {
+			return "FAILED"
+		}
+
+		student.CreatedAt, err = time.Parse(layoutDateTime, createdAt)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		student.UpdatedAt, err = time.Parse(layoutDateTime, updatedAt)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	if student.ID == 0 {
+		 return "NOT FOUND"
+	}
+	return student
+}
 
 func GetAll(ctx context.Context) ([]models.Student, error) {
 	var students []models.Student

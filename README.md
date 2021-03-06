@@ -1,6 +1,29 @@
 # API SPEC
 *Sample Go-Lang RESTful Project*
 
+## GET STUDENT BY ID
+
+Request : 
+
+**GET http://localhost:9090/student?id=3
+Accept: application/json**
+
+Response :
+
+```json
+{
+  "id": 3,
+  "identifier": "2003113948",
+  "name": "sammi",
+  "email": "sammi@gmail.com",
+  "semester": 2,
+  "created_at": "2020-03-06T07:04:05Z",
+  "updated_at": "2020-03-06T07:04:05Z"
+}
+
+```
+
+
 ## GET ALL STUDENTS
 
 Request : 
