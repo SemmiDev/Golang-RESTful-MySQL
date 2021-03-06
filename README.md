@@ -103,7 +103,7 @@ Response :
 }
 ```
 
-## Delete Student
+## DELETE STUDENT
 Request :
 
 **DELETE http://localhost:9090/students/delete?id=9
